@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>扫雷</title>
+  <style>
+    #grid {
+      margin: auto;
+    }
+
+    .blocks {
+      width: 30px;
+      height: 30px;
+      display: block;
+      text-align: center;
+      line-height: 30px;
+      border: solid 1px #000;
+      user-select: none;
+      cursor: pointer;
+    }
+
+    .blocks:hover {
+      background: #0af;
+    }
+  </style>
+</head>
+
+<!-- ondragstart:防拖拽生成新页面 -->
+
+<body ondragstart='return false' oncontextmenu='self.event.returnValue=false'>
+
+  <div>
+    <table id='grid'></table>
+  </div>
+
+  <script>
+    var row = 10; //行数
+    var col = 10; //列数
+    var count = 0; //当前雷数量
+    var maxCount = (row * col) * 0.5; //最大雷数量
+    var isFirstOpen = true;
+    var grid = init_grid(row, col);
+    var mines = new Array(); //雷区 1为雷 小于1无雷 负n为周围有n个雷
+
+    //初始化网格 (row-行数 col-列数)
+    function init_grid(row, col) {
+
+      //初始化
+      count = 0;
+      isFirstOpen = true;
+
+      //生成网格html
+      let gridHtml = '';
+      for (let i = 0; i < row; i++) {
+        gridHtml += '<tr>'
+        for (let j = 0; j < col; j++) {
+          gridHtml +=
+            '<td><span class="blocks" onmousedown="block_click(' + i + ',' + j + ',event)"></span></td>';
+        }
+        gridHtml += '<tr>'
+      }
+      document.getElementById('grid').innerHTML = gridHtml;
+
+      //返回网格二维数组
+      let blocks = document.getElementsByClassName('blocks');
+      let grid = new Array();
+      for (let i = 0; i < blocks.length; i++) {
+        if (i % col === 0) {
+          grid.push(new Array());
+        }
+        grid[parseInt(i / col)].push(blocks[i]);
+      }
+      return grid;
+    }
+
+    //方块点击事件 _i：坐标i _j:坐标j e:鼠标事件
+    function block_click(i, j, e) {
+
+      //跳过已打开的方块
+      if (grid[i][j].isOpen) {
+        return;
+      }
+
+      if (e.button === 0) {
+        //鼠标左键打开方块
+        block_open(i, j);
+      }
+      if (e.button === 2) {
+        //鼠标右键标记方块
+        block_flag(grid[i][j]);
+      }
+
+      //标记方块
+      function block_flag(block) {
+        if (block.innerHTML !== '▲') {
+          block.innerHTML = '▲';
+        } else {
+          block.innerHTML = '';
+        }
+      }
+
+      //打开方块
+      function block_open(_i, _j) {
+
+        //第一次打开
+        if (isFirstOpen) {
+
+          isFirstOpen = false;
+
+          //初始化雷区和无雷区
+          for (let i = 0; i < row; i++) {
+            mines[i] = new Array();
+            for (let j = 0; j < col; j++) {
+              mines[i][j] = 0;
+            }
+          }
+
+          //生成雷区
+          while (count < maxCount) {
+
+            let ri = Math.floor(Math.random() * row);
+            let rj = Math.floor(Math.random() * col);
+
+            if (!(ri === _i && rj === _j) && mines[ri][rj] !== 1) {
+              mines[ri][rj] = 1;
+              count++;
+
+              //更新九宫格内非雷区的记雷数
+              for (let i = ri - 1; i < ri + 2; i++) {
+                for (let j = rj - 1; j < rj + 2; j++) {
+                  //判断坐标防越界
+                  if (i > -1 && j > -1 && i < row && j < col) {
+                    //判断非雷
+                    if (mines[i][j] !== 1) {
+                      //用负数作为记雷数
+                      mines[i][j]--;
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+
+        //显示
+        let block = grid[_i][_j];
+        block.isOpen = true;
+        block.style.background = '#ccc';
+        block.style.cursor = 'default';
+
+        switch (mines[_i][_j]) {
+          case 0:
+            //如果为0打开周围为0的方块
+            for (let i = _i - 1; i < _i + 2; i++) {
+              for (let j = _j - 1; j < _j + 2; j++) {
+                //判断是否越界&&跳过已打开的方块
+                if (i > -1 && j > -1 && i < row && j < col && !grid[i][j].isOpen) {
+                  //打开非雷方块
+                  if (mines[i][j] !== 1) {
+                    block_open(i, j);
+                  }
+                }
+              }
+            }
+            break;
+          case 1:
+            block.innerHTML = '雷';
+            //打开所有的雷
+            for (let i = 0; i < row; i++) {
+              for (let j = 0; j < col; j++) {
+                if(!grid[i][j].isOpen && mines[i][j]===1){
+                  block_open(i,j);
+                }
+              }
+            }
+            break;
+          default:
+            block.innerHTML = Math.abs(mines[_i][_j]);
+            break;
+        }
+      }
+
+    }
+  </script>
+</body>
+
+</html>
